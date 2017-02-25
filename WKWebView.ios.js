@@ -324,6 +324,14 @@ var WKWebView = React.createClass({
     );
   },
 
+  getScreenshot: function(width, height) {
+    UIManager.dispatchViewManagerCommand(
+      this.getWebViewBridgeHandle(),
+      UIManager.RCTWebViewBridge.Commands.getScreenshot,
+      [ width, height ]
+    );
+  },
+
   /**
    * Stop loading the current page.
    */

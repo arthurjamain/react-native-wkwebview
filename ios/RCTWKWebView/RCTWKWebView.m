@@ -78,6 +78,35 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
   [_webView goForward];
 }
 
+- (void)getScreenshot:(NSNumber *) width height:(NSNumber *)height
+{
+    
+    [_webView setOpaque:false];
+    [_webView setBackgroundColor:[UIColor clearColor]];
+    
+    
+    UIGraphicsBeginImageContext(CGSizeMake(_webView.layer.frame.size.width, _webView.layer.frame.size.height));
+    [_webView.layer renderInContext:UIGraphicsGetCurrentContext()];
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    
+    UIGraphicsBeginImageContext(CGSizeMake(_webView.layer.frame.size.width /2, _webView.layer.frame.size.height /2));
+    [image drawInRect:CGRectMake(0, 0, _webView.layer.frame.size.width /2, _webView.layer.frame.size.height /2)];
+    image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    if (_onScreenshotTaken) {
+        
+        NSMutableDictionary<NSString *, id> *event = [self baseEvent];
+        
+        NSString *b64 = [UIImagePNGRepresentation(image) base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
+        
+        [event addEntriesFromDictionary:@{ @"text": b64 }];
+        _onScreenshotTaken(event);
+    }
+    
+}
 - (void)evaluateJavaScript:(NSString *)javaScriptString
          completionHandler:(void (^)(id, NSError *error))completionHandler
 {
