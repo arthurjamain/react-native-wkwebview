@@ -3,13 +3,13 @@
 #import <WebKit/WebKit.h>
 #import <UIKit/UIKit.h>
 
-#import <React/RCTAutoInsetsProtocol.h>
-#import <React/RCTConvert.h>
-#import <React/RCTEventDispatcher.h>
-#import <React/RCTLog.h>
-#import <React/RCTUtils.h>
-#import <React/RCTView.h>
-#import <React/UIView+React.h>
+#import "RCTAutoInsetsProtocol.h"
+#import "RCTConvert.h"
+#import "RCTEventDispatcher.h"
+#import "RCTLog.h"
+#import "RCTUtils.h"
+#import "RCTView.h"
+#import "UIView+React.h"
 
 @interface RCTWKWebView () <WKNavigationDelegate, RCTAutoInsetsProtocol, WKScriptMessageHandler, WKUIDelegate>
 
@@ -18,6 +18,7 @@
 @property (nonatomic, copy) RCTDirectEventBlock onLoadingError;
 @property (nonatomic, copy) RCTDirectEventBlock onShouldStartLoadWithRequest;
 @property (nonatomic, copy) RCTDirectEventBlock onProgress;
+@property (nonatomic, copy) RCTDirectEventBlock onScreenshotTaken;
 @property (nonatomic, copy) RCTDirectEventBlock onMessage;
 
 @end
@@ -32,15 +33,15 @@
 {
   if ((self = [super initWithFrame:frame])) {
     super.backgroundColor = [UIColor clearColor];
-    
+
     _automaticallyAdjustContentInsets = YES;
     _contentInset = UIEdgeInsetsZero;
-    
+
     WKWebViewConfiguration* config = [[WKWebViewConfiguration alloc] init];
     WKUserContentController* userController = [[WKUserContentController alloc]init];
     [userController addScriptMessageHandler:self name:@"reactNative"];
     config.userContentController = userController;
-    
+
     _webView = [[WKWebView alloc] initWithFrame:self.bounds configuration:config];
     _webView.UIDelegate = self;
     _webView.navigationDelegate = self;
@@ -62,7 +63,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
       request = mutableRequest;
     }
   }
-  
+
   [_webView loadRequest:request];
 }
 
@@ -80,32 +81,55 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
 
 - (void)getScreenshot:(NSNumber *) width height:(NSNumber *)height
 {
-    
-    [_webView setOpaque:false];
-    [_webView setBackgroundColor:[UIColor clearColor]];
-    
-    
-    UIGraphicsBeginImageContext(CGSizeMake(_webView.layer.frame.size.width, _webView.layer.frame.size.height));
-    [_webView.layer renderInContext:UIGraphicsGetCurrentContext()];
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    
-    
-    UIGraphicsBeginImageContext(CGSizeMake(_webView.layer.frame.size.width /2, _webView.layer.frame.size.height /2));
-    [image drawInRect:CGRectMake(0, 0, _webView.layer.frame.size.width /2, _webView.layer.frame.size.height /2)];
-    image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    
-    if (_onScreenshotTaken) {
-        
-        NSMutableDictionary<NSString *, id> *event = [self baseEvent];
-        
-        NSString *b64 = [UIImagePNGRepresentation(image) base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
-        
-        [event addEntriesFromDictionary:@{ @"text": b64 }];
-        _onScreenshotTaken(event);
-    }
-    
+
+  [_webView setOpaque:false];
+  [_webView setBackgroundColor:[UIColor clearColor]];
+
+  float scale = 1;
+  float downsamplingFactor = 4;
+
+  NSLog(@"Dimensions: w %f h %f", _webView.layer.frame.size.width, _webView.layer.frame.size.height);
+
+  scale = 1024 / _webView.layer.frame.size.width;
+
+  // explore / profile
+  if (_webView.layer.frame.size.width == 512.0 && _webView.layer.frame.size.height == 75.0) {
+    scale = 1.85;
+  }
+
+  // menu
+  if (_webView.layer.frame.size.width == 700.0 && _webView.layer.frame.size.height == 477.0) {
+    scale = 1.5;
+  }
+
+  // controls
+  if (_webView.layer.frame.size.width == 600.0 && _webView.layer.frame.size.height == 300.0) {
+    scale = 1.6;
+  }
+
+  UIGraphicsBeginImageContext(CGSizeMake(_webView.layer.frame.size.width / scale, _webView.layer.frame.size.height / scale));
+  [_webView.layer renderInContext:UIGraphicsGetCurrentContext()];
+  UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+  UIGraphicsEndImageContext();
+
+
+  UIGraphicsBeginImageContext(CGSizeMake(_webView.layer.frame.size.width / downsamplingFactor, _webView.layer.frame.size.height / downsamplingFactor));
+  [image drawInRect:CGRectMake(0, 0, _webView.layer.frame.size.width / downsamplingFactor, _webView.layer.frame.size.height / downsamplingFactor)];
+  image = UIGraphicsGetImageFromCurrentImageContext();
+  UIGraphicsEndImageContext();
+
+  if (_onScreenshotTaken) {
+
+    NSMutableDictionary<NSString *, id> *event = [self baseEvent];
+
+    NSString *b64 = [UIImagePNGRepresentation(image) base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
+
+    [event addEntriesFromDictionary:@{ @"text": b64 }];
+
+    _onScreenshotTaken(event);
+
+  }
+
 }
 - (void)evaluateJavaScript:(NSString *)javaScriptString
          completionHandler:(void (^)(id, NSError *error))completionHandler
@@ -138,20 +162,20 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
 {
   if (![_source isEqualToDictionary:source]) {
     _source = [source copy];
-    
+
     // Allow loading local files:
     // <WKWebView source={{ file: RNFS.MainBundlePath + '/data/index.html', allowingReadAccessToURL: RNFS.MainBundlePath }} />
     // Only works for iOS 9+. So iOS 8 will simply ignore those two values
     NSString *file = [RCTConvert NSString:source[@"file"]];
     NSString *allowingReadAccessToURL = [RCTConvert NSString:source[@"allowingReadAccessToURL"]];
-    
+
     if (file && [_webView respondsToSelector:@selector(loadFileURL:allowingReadAccessToURL:)]) {
       NSURL *fileURL = [RCTConvert NSURL:file];
       NSURL *baseURL = [RCTConvert NSURL:allowingReadAccessToURL];
       [_webView loadFileURL:fileURL allowingReadAccessToURL:baseURL];
       return;
     }
-    
+
     // Check for a static html source first
     NSString *html = [RCTConvert NSString:source[@"html"]];
     if (html) {
@@ -162,7 +186,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
       [_webView loadHTMLString:html baseURL:baseURL];
       return;
     }
-    
+
     NSURLRequest *request = [RCTConvert NSURLRequest:source];
     // Because of the way React works, as pages redirect, we actually end up
     // passing the redirect urls back here, so we ignore them if trying to load
@@ -215,7 +239,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
                                                                                                  @"canGoBack": @(_webView.canGoBack),
                                                                                                  @"canGoForward" : @(_webView.canGoForward),
                                                                                                  }];
-  
+
   return event;
 }
 
@@ -254,9 +278,9 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
   NSURLRequest *request = navigationAction.request;
   NSURL* url = request.URL;
   NSString* scheme = url.scheme;
-  
+
   BOOL isJSNavigation = [scheme isEqualToString:RCTJSNavigationScheme];
-  
+
   // skip this for the JS Navigation handler
   if (!isJSNavigation && _onShouldStartLoadWithRequest) {
     NSMutableDictionary<NSString *, id> *event = [self baseEvent];
@@ -270,7 +294,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
       return decisionHandler(WKNavigationActionPolicyCancel);
     }
   }
-  
+
   if (_onLoadingStart) {
     // We have this check to filter out iframe requests and whatnot
     BOOL isTopFrame = [url isEqual:request.mainDocumentURL];
@@ -283,7 +307,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
       _onLoadingStart(event);
     }
   }
-  
+
   if (isJSNavigation) {
     decisionHandler(WKNavigationActionPolicyCancel);
   }
@@ -302,7 +326,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
       // http://stackoverflow.com/questions/1024748/how-do-i-fix-nsurlerrordomain-error-999-in-iphone-3-0-os
       return;
     }
-    
+
     NSMutableDictionary<NSString *, id> *event = [self baseEvent];
     [event addEntriesFromDictionary:@{
                                       @"domain": error.domain,
@@ -332,7 +356,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
 
 - (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(void))completionHandler {
   UIAlertController *alertController = [UIAlertController alertControllerWithTitle:message message:nil preferredStyle:UIAlertControllerStyleAlert];
-  
+
   [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Close", nil) style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
     completionHandler();
   }]];
@@ -341,7 +365,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
 }
 
 - (void)webView:(WKWebView *)webView runJavaScriptConfirmPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(BOOL))completionHandler {
-  
+
   // TODO We have to think message to confirm "YES"
   UIAlertController *alertController = [UIAlertController alertControllerWithTitle:message message:nil preferredStyle:UIAlertControllerStyleAlert];
   [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"OK", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
@@ -355,17 +379,17 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
 }
 
 - (void)webView:(WKWebView *)webView runJavaScriptTextInputPanelWithPrompt:(NSString *)prompt defaultText:(NSString *)defaultText initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSString *))completionHandler {
-  
+
   UIAlertController *alertController = [UIAlertController alertControllerWithTitle:prompt message:nil preferredStyle:UIAlertControllerStyleAlert];
   [alertController addTextFieldWithConfigurationHandler:^(UITextField *textField) {
     textField.text = defaultText;
   }];
-  
+
   [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"OK", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
     NSString *input = ((UITextField *)alertController.textFields.firstObject).text;
     completionHandler(input);
   }]];
-  
+
   [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", nil) style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
     completionHandler(nil);
   }]];

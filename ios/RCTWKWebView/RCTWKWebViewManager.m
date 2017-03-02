@@ -1,10 +1,10 @@
 #import "RCTWKWebViewManager.h"
 
 #import "RCTWKWebView.h"
-#import <React/RCTBridge.h>
-#import <React/RCTUtils.h>
-#import <React/RCTUIManager.h>
-#import <React/UIView+React.h>
+#import "RCTBridge.h"
+#import "RCTUtils.h"
+#import "RCTUIManager.h"
+#import "UIView+React.h"
 
 #import <WebKit/WebKit.h>
 
@@ -43,6 +43,7 @@ RCT_EXPORT_VIEW_PROPERTY(onLoadingError, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onShouldStartLoadWithRequest, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onProgress, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onMessage, RCTDirectEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(onScreenshotTaken, RCTDirectEventBlock)
 
 RCT_EXPORT_METHOD(goBack:(nonnull NSNumber *)reactTag)
 {
@@ -96,9 +97,9 @@ RCT_EXPORT_METHOD(getScreenshot:(nonnull NSNumber *)reactTag
                   width:(nonnull NSNumber *) width
                   width:(nonnull NSNumber *) height)
 {
-    [self.bridge.uiManager addUIBlock:^(__unused RCTUIManager *uiManager, NSDictionary<NSNumber *, RCTWebViewBridge *> *viewRegistry) {
-        RCTWebViewBridge *view = viewRegistry[reactTag];
-        if (![view isKindOfClass:[RCTWebViewBridge class]]) {
+    [self.bridge.uiManager addUIBlock:^(__unused RCTUIManager *uiManager, NSDictionary<NSNumber *, RCTWKWebView *> *viewRegistry) {
+        RCTWKWebView *view = viewRegistry[reactTag];
+        if (![view isKindOfClass:[RCTWKWebView class]]) {
             RCTLogError(@"Invalid view returned from registry, expecting RCTWebViewBridge, got: %@", view);
         } else {
             [view getScreenshot:width height:height];

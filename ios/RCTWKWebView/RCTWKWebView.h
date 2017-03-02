@@ -1,4 +1,4 @@
-#import <React/RCTView.h>
+#import "RCTView.h"
 
 @class RCTWKWebView;
 
@@ -35,6 +35,6 @@ shouldStartLoadForRequest:(NSMutableDictionary<NSString *, id> *)request
 - (void)reload;
 - (void)stopLoading;
 - (void)evaluateJavaScript:(NSString *)javaScriptString completionHandler:(void (^)(id, NSError *error))completionHandler;
-- (void)getScreenshot:(NSNumber *) width height:(NSNumber *)height
+- (void)getScreenshot:(NSNumber *) width height:(NSNumber *)height;
 
 @end

@@ -166,6 +166,7 @@ var WKWebView = React.createClass({
      * Receive message from webpage
      */
     onMessage: PropTypes.func,
+    onScreenshotTaken: PropTypes.func,
     /**
      * @platform ios
      */
@@ -279,6 +280,7 @@ var WKWebView = React.createClass({
         onLoadingError={this._onLoadingError}
         onProgress={this._onProgress}
         onMessage={this._onMessage}
+        onScreenshotTaken={this._onScreenshotTaken}
         onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
         pagingEnabled={this.props.pagingEnabled}
       />;
@@ -326,8 +328,8 @@ var WKWebView = React.createClass({
 
   getScreenshot: function(width, height) {
     UIManager.dispatchViewManagerCommand(
-      this.getWebViewBridgeHandle(),
-      UIManager.RCTWebViewBridge.Commands.getScreenshot,
+      this.getWebViewHandle(),
+      UIManager.RCTWKWebView.Commands.getScreenshot,
       [ width, height ]
     );
   },
@@ -401,6 +403,11 @@ var WKWebView = React.createClass({
   _onMessage(event: Event) {
     var onMessage = this.props.onMessage;
     onMessage && onMessage(event.nativeEvent);
+  },
+
+  _onScreenshotTaken(event: Event) {
+    var onScreenshotTaken = this.props.onScreenshotTaken;
+    onScreenshotTaken && onScreenshotTaken(event.nativeEvent);
   }
 });
 
