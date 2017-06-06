@@ -1,6 +1,6 @@
 #import "RCTWKWebViewManager.h"
 
-#import <React/RCTWKWebView.h>
+#import "RCTWKWebView.h"
 #import <React/RCTBridge.h>
 #import <React/RCTUtils.h>
 #import <React/RCTUIManager.h>
