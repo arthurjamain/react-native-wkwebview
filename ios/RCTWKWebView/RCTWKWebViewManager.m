@@ -1,10 +1,10 @@
 #import "RCTWKWebViewManager.h"
 
-#import "RCTWKWebView.h"
-#import "RCTBridge.h"
-#import "RCTUtils.h"
-#import "RCTUIManager.h"
-#import "UIView+React.h"
+#import <React/RCTWKWebView.h>
+#import <React/RCTBridge.h>
+#import <React/RCTUtils.h>
+#import <React/RCTUIManager.h>
+#import <React/UIView+React.h>
 
 #import <WebKit/WebKit.h>
 
