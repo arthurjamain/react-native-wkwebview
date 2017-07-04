@@ -109,7 +109,7 @@ RCT_NOT_IMPLEMENTED(- (instancetype)initWithCoder:(NSCoder *)aDecoder)
   }
   
   UIGraphicsBeginImageContext(CGSizeMake(_webView.layer.frame.size.width / scale, _webView.layer.frame.size.height / scale));
-  [_webView.layer renderInContext:UIGraphicsGetCurrentContext()];
+  [_webView drawViewHierarchyInRect:_webView.bounds afterScreenUpdates:YES];
   UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
   UIGraphicsEndImageContext();
     
